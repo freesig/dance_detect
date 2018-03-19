@@ -34,6 +34,8 @@ else:
     raise ValueError("Only supports 16 bit wave")
 
 norm = lambda x: (x - MIN_VAL) / RANGE
+max_norm = norm(MAX_VAL)
+above = lambda x: (x - EVENT_TRIGGER) / (max_norm - EVENT_TRIGGER)
 
 data = wf.readframes(CHUNK)
 
@@ -42,7 +44,7 @@ while data != '':
     int_data = struct.unpack(fmt, data)
     volume = norm( max(int_data) )
     if volume > EVENT_TRIGGER:
-        print "Event"
+      print "Event by: ", above(volume), " volume: ", volume
     data = wf.readframes(CHUNK)
 
 stream.stop_stream()
