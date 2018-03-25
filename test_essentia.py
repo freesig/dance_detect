@@ -1,6 +1,8 @@
 import sys
 import essentia
 
+import time
+
 import essentia.standard
 import essentia.streaming
 
@@ -25,6 +27,14 @@ for frame in FrameGenerator(loader, frameSize = 100*1024, hopSize = 512, startFr
     beat_tracker.bpmIntervals >> None 
     essentia.run(v_in)
 
+    bpm = pool['Rhythm.bpm']
+    bps = bpm / 60.0
+
+    next_beat = time.clock() + bps
+
     print "beats: ", pool['Rhythm.ticks']
     print "bpm: ", pool['Rhythm.bpm']
+    print "bps: ", bps
+    print "next_beat: ", next_beat
+    print "time: ", time.clock()
 
