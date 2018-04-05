@@ -17,10 +17,12 @@ import essentia.streaming
 
 from essentia.streaming import VectorInput
 from essentia.streaming import RhythmExtractor2013
+from essentia.standard import Energy 
 from essentia.standard import FrameGenerator 
 UDP_IP = "10.42.1.254"
 UDP_PORT = 65000 
-CHUNK = 1024*100
+LENGTH = 100
+CHUNK = 1024 * LENGTH 
 FORMAT = pyaudio.paFloat32
 
 class ExtractionThread(threading.Thread):
@@ -37,13 +39,14 @@ class ExtractionThread(threading.Thread):
 
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
-        for frame in FrameGenerator(loader, frameSize = CHUNK, hopSize = 512, startFromZero=True):
+        for frame in FrameGenerator(loader, frameSize = CHUNK, hopSize = CHUNK, startFromZero=True):
             if self.stoprequest.isSet():
                 break
             else:
-                print "e wait"
                 self.play_started.get()
-            print "e start"
+            
+            start_time =  time.time()
+
             v_in = VectorInput(frame)
             beat_tracker = RhythmExtractor2013(method="degara")
             pool = essentia.Pool()
@@ -55,19 +58,24 @@ class ExtractionThread(threading.Thread):
             beat_tracker.bpmIntervals >> None 
             essentia.run(v_in)
 
-            bpm = pool['Rhythm.bpm']
-            bps = bpm / 60.0
+            energy = Energy()
+            frame_energy = energy(frame)
 
-            next_beat = time.time() + bps
+            bpm = pool['Rhythm.bpm']
+            spb = 60.0 / bpm if bpm > 0 else 0.0
+            look_ahead_n = 8 
+
+            next_beat = start_time + spb * look_ahead_n
 
             sock.sendto(str(next_beat), (UDP_IP, UDP_PORT))
 
             print "beats: ", pool['Rhythm.ticks']
+            print "energy: ", frame_energy 
             print "bpm: ", pool['Rhythm.bpm']
-            print "bps: ", bps
+            print "spb: ", spb
+            print "bar started: ", start_time
+            print "time now: ", time.time()
             print "next_beat: ", next_beat
-            print "time: ", time.clock()
-            print "e done"
             self.extract_done.put(True)
 
     def stop(self):
@@ -92,16 +100,13 @@ class PlayingThread(threading.Thread):
                 output=True)
         data = wf.readframes(CHUNK)
         while len(data) > 0:
-            print "p start"
             self.play_started.put(True)
             stream.write(data)
             data = wf.readframes(CHUNK)
             if self.stoprequest.isSet():
                 break
             else:
-                print "p wait"
                 self.extract_done.get()
-            print "p continue"
 
         # stop stream (4)
         stream.stop_stream()
@@ -131,7 +136,6 @@ def play():
         try:
             pt.join(1)
             et.join(1)
-            print "alive"
             if not pt.isAlive() and not et.isAlive():
                 break
         except (KeyboardInterrupt, SystemExit):
