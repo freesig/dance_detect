@@ -63,11 +63,11 @@ class ExtractionThread(threading.Thread):
 
             bpm = pool['Rhythm.bpm']
             spb = 60.0 / bpm if bpm > 0 else 0.0
-            look_ahead_n = 8 
+            look_ahead_n = 16
 
             next_beat = start_time + spb * look_ahead_n
 
-            sock.sendto(str(next_beat), (UDP_IP, UDP_PORT))
+            sock.sendto(str(next_beat) + "," + str(frame_energy), (UDP_IP, UDP_PORT))
 
             print "beats: ", pool['Rhythm.ticks']
             print "energy: ", frame_energy 
