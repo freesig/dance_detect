@@ -20,7 +20,7 @@ from essentia.streaming import RhythmExtractor2013
 from essentia.standard import Energy 
 from essentia.standard import FrameGenerator 
 UDP_IP = "10.42.1.254"
-UDP_PORT = 65000 
+UDP_PORT = [55000, 54000, 53000]
 LENGTH = 100
 CHUNK = 1024 * LENGTH 
 FORMAT = pyaudio.paFloat32
@@ -37,7 +37,11 @@ class ExtractionThread(threading.Thread):
 
         msg = "0"
 
-        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        socks = [socket.socket(socket.AF_INET, socket.SOCK_DGRAM),
+        socket.socket(socket.AF_INET, socket.SOCK_DGRAM),
+        socket.socket(socket.AF_INET, socket.SOCK_DGRAM)]
+        beat_count = 0
+        N_BEATS = 4
 
         for frame in FrameGenerator(loader, frameSize = CHUNK, hopSize = CHUNK, startFromZero=True):
             if self.stoprequest.isSet():
@@ -64,11 +68,20 @@ class ExtractionThread(threading.Thread):
             bpm = pool['Rhythm.bpm']
             spb = 60.0 / bpm if bpm > 0 else 0.0
             look_ahead_n = 16
+            beats = pool['Rhythm.ticks']
 
-            next_beat = start_time + spb * look_ahead_n
+            for i, b in enumerate(beats):
+                beat_count += 1
+                print "bc: ", beat_count
+                if(beat_count % N_BEATS == 0):
+                    next_beat = start_time + b + spb * look_ahead_n
+                    print "detected: ", i, b
 
-            sock.sendto(str(next_beat) + "," + str(frame_energy), (UDP_IP, UDP_PORT))
+                    for i, sock in enumerate(socks):
+                        sock.sendto(str(next_beat) + "," + str(frame_energy), (UDP_IP, UDP_PORT[i]))
+                    
 
+            
             print "beats: ", pool['Rhythm.ticks']
             print "energy: ", frame_energy 
             print "bpm: ", pool['Rhythm.bpm']
