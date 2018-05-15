@@ -29,6 +29,57 @@ LENGTH = 100
 CHUNK = 1024 * LENGTH 
 FORMAT = pyaudio.paFloat32
 
+frame_g = None
+
+
+class BeatThread(threading.Thread):
+    def __init__(self, f_q, r_q):
+        super(BeatThread, self).__init__()
+        self.frame_q = f_q
+        self.result_q = r_q
+        self.stoprequest = threading.Event()
+    
+    def run(self):
+        global frame_g
+        while not self.stoprequest.isSet():
+            pool = essentia.Pool()
+            self.frame_q.get()
+            v_in = VectorInput(frame_g)
+            beat_tracker = RhythmExtractor2013(method="degara")
+            v_in.data >> beat_tracker.signal
+            beat_tracker.ticks >> (pool, 'Rhythm.ticks')
+            beat_tracker.bpm >> (pool, 'Rhythm.bpm')
+            beat_tracker.confidence >> None 
+            beat_tracker.estimates >> None 
+            beat_tracker.bpmIntervals >> None 
+            essentia.run(v_in)
+            self.result_q.put(pool)
+
+    def stop(self):
+        self.stoprequest.set()
+
+class OnsetThread(threading.Thread):
+    def __init__(self, f_q, r_q):
+        super(OnsetThread, self).__init__()
+        self.frame_q = f_q
+        self.result_q = r_q
+        self.stoprequest = threading.Event()
+    
+    def run(self):
+        global frame_g
+        while not self.stoprequest.isSet():
+            pool = essentia.Pool()
+            self.frame_q.get()
+            v_in2 = VectorInput(frame_g)
+            onset = OnsetRate()
+            v_in2.data >> onset.signal 
+            onset.onsetRate >> (pool, 'Rhythm.onsetRate')
+            onset.onsetTimes >> None
+            essentia.run(v_in2)
+            self.result_q.put(pool)
+
+    def stop(self):
+        self.stoprequest.set()
 
 class ExtractionThread(threading.Thread):
     def __init__(self, ed, ps):
@@ -49,50 +100,34 @@ class ExtractionThread(threading.Thread):
         socket.socket(socket.AF_INET, socket.SOCK_DGRAM)]
         beat_count = 0
         N_BEATS = 4
+        global frame_g
+        frame_q_o = Queue.Queue()
+        result_q_o = Queue.Queue()
+        frame_q_b = Queue.Queue()
+        result_q_b = Queue.Queue()
+        ot = OnsetThread(frame_q_o, result_q_o)
+        bt = BeatThread(frame_q_b, result_q_b)
+        ot.daemon = True
+        bt.daemon = True
+        ot.start()
+        bt.start()
 
         for frame in FrameGenerator(loader, frameSize = CHUNK, hopSize = CHUNK, startFromZero=True):
+            frame_g = frame
             if self.stoprequest.isSet():
                 break
             else:
                 self.play_started.get()
             
             start_time =  time.time()
-            pool2 = essentia.Pool()
-            pool = essentia.Pool()
-            def beat_call():
-                v_in = VectorInput(frame)
-                beat_tracker = RhythmExtractor2013(method="degara")
-                v_in.data >> beat_tracker.signal
-                beat_tracker.ticks >> (pool, 'Rhythm.ticks')
-                beat_tracker.bpm >> (pool, 'Rhythm.bpm')
-                beat_tracker.confidence >> None 
-                beat_tracker.estimates >> None 
-                beat_tracker.bpmIntervals >> None 
-                essentia.run(v_in)
-
-            def onset_call():
-                v_in2 = VectorInput(frame)
-                onset = OnsetRate()
-                v_in2.data >> onset.signal 
-                onset.onsetRate >> (pool2, 'Rhythm.onsetRate')
-                onset.onsetTimes >> None
-                essentia.run(v_in2)
             
-            beat_thread = threading.Thread(target=beat_call, args=())
-            onset_thread = threading.Thread(target=onset_call, args=())
-            beat_thread.daemon = True
-            onset_thread.daemon = True
-            #print "time1: ", time.time()
-            beat_thread.start()
-            #print "time2: ", time.time()
-            onset_thread.start()
-            #print "time3: ", time.time()
-
+            frame_q_b.put(True)
+            frame_q_o.put(True)
 
             energy = Energy()
             frame_energy = energy(frame)
-            beat_thread.join()
-            onset_thread.join()
+            pool2 = result_q_o.get()
+            pool = result_q_b.get()
 
 
             bpm = pool['Rhythm.bpm']
@@ -122,6 +157,8 @@ class ExtractionThread(threading.Thread):
             print "next_beat: ", next_beat
             '''
             self.extract_done.put(True)
+        ot.stop()
+        bt.stop()
 
     def stop(self):
         self.stoprequest.set()
