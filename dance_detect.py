@@ -8,6 +8,7 @@ import socket
 import threading
 import Queue
 
+from ConfigParser import SafeConfigParser
 
 from multiprocessing.pool import ThreadPool
 
@@ -23,13 +24,24 @@ from essentia.streaming import RhythmExtractor2013
 from essentia.standard import Energy 
 from essentia.streaming import OnsetRate
 from essentia.standard import FrameGenerator 
-UDP_IP = "10.42.1.254"
-UDP_PORT = [55000, 54000, 52000]
+UDP_IP = None
+UDP_PORT = []
 LENGTH = 100
 CHUNK = 1024 * LENGTH 
 FORMAT = pyaudio.paFloat32
 
 frame_g = None
+
+
+def config_network():
+    global UDP_IP
+    global UDP_PORT
+    network = SafeConfigParser()
+    network.read('network.ini')
+    UDP_IP = network.get('comms', 'ip')
+    UDP_PORT.append( network.getint('comms', 'port1') )
+    UDP_PORT.append( network.getint('comms', 'port2') )
+    UDP_PORT.append( network.getint('comms', 'port3') )
 
 
 class BeatThread(threading.Thread):
@@ -209,6 +221,7 @@ def play():
     if len(sys.argv) < 2:
         print("Supports 16 bit wave file. Use %s filename.wav" % sys.argv[0])
         sys.exit(-1)
+    config_network()
     play_started = Queue.Queue()
     extract_done = Queue.Queue()
     pt = PlayingThread(extract_done, play_started)
