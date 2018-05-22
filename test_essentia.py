@@ -139,9 +139,12 @@ class ExtractionThread(threading.Thread):
             for i, b in enumerate(beats):
                 beat_count += 1
                 if(beat_count % N_BEATS == 0):
+                    half_beat = start_time + b + spb * (look_ahead_n / 2)
                     next_beat = start_time + b + spb * look_ahead_n
 
                     for i, sock in enumerate(socks):
+                        sock.sendto(str(half_beat) + "," + str(frame_energy) + "," + str(onset),
+                                (UDP_IP, UDP_PORT[i]))
                         sock.sendto(str(next_beat) + "," + str(frame_energy) + "," + str(onset),
                                 (UDP_IP, UDP_PORT[i]))
                     
