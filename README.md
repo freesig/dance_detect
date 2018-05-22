@@ -15,3 +15,4 @@ when a beat will occur in the future.
 1. Place a __wav__ file in a subdirectory called "samples". _(So dance_detect/samples/my_music.wav)_
 2. Set the IP of robot running Baxter Boogie and a port to use
 3. Run with `python dance_detect.py /samples/some_music.wav`
+4. Close with `ctrl-c`
