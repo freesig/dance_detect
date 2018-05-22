@@ -13,6 +13,14 @@ when a beat will occur in the future.
 
 ## Usage
 1. Place a __wav__ file in a subdirectory called "samples". _(So dance_detect/samples/my_music.wav)_
-2. Set the IP of robot running Baxter Boogie and a port to use
+2. Set the IP of robot running Baxter Boogie and a ports to use.
+These live in the _network.ini_ file.
+Ip is address of computer on the robot.
+The ports are for each part of baxter boogie. So one for each arm plus the base.
 3. Run with `python dance_detect.py /samples/some_music.wav`
 4. Close with `ctrl-c`
+
+## Installation
+This project depends on:
+- __[Essentia for music information algorithms. Install instructions __[here](http://essentia.upf.edu/documentation/installing.html)__
+- Py
