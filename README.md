@@ -22,5 +22,5 @@ The ports are for each part of baxter boogie. So one for each arm plus the base.
 
 ## Installation
 This project depends on:
-- __[Essentia for music information algorithms. Install instructions __[here](http://essentia.upf.edu/documentation/installing.html)__
-- Py
+- __[Essentia](http://essentia.upf.edu)__ for music information algorithms. Install instructions __[here](http://essentia.upf.edu/documentation/installing.html)__
+- __[PyAudio](https://people.csail.mit.edu/hubert/pyaudio/)__ to play the audio.
