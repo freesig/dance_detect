@@ -1,4 +1,4 @@
-# dance_detect
+# Dance Detect
 This project is designed to be used with [Baxter Boogie](https://github.com/freesig/baxter_boogie).
 It uses the [Essentia](http://essentia.upf.edu/documentation/) library to extract information 
 from music for a robot to respond to.
@@ -24,3 +24,4 @@ The ports are for each part of baxter boogie. So one for each arm plus the base.
 This project depends on:
 - __[Essentia](http://essentia.upf.edu)__ for music information algorithms. Install instructions __[here](http://essentia.upf.edu/documentation/installing.html)__
 - __[PyAudio](https://people.csail.mit.edu/hubert/pyaudio/)__ to play the audio.
+- Clone this repo then places music in `samples` sub folder. Make sure they are 8 or 16 bit wav files.
